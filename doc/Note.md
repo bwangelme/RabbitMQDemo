@@ -5,7 +5,7 @@
 
 ![round-robin Example](https://passage-1253400711.cos-website.ap-beijing.myqcloud.com/2019-12-12-014029.png)
 
-示例代码在 [Github](https://github.com/bwangelme/RabbitMQDemo/tree/41c82064edbde8c3bf74c1474420da821f7ac6dc) 上。
+完整代码见 [Github@41c82064](https://github.com/bwangelme/RabbitMQDemo/tree/41c82064edbde8c3bf74c1474420da821f7ac6dc) 。
 
 # 消息确认
 
@@ -52,4 +52,4 @@
 
 ![](https://passage-1253400711.cos-website.ap-beijing.myqcloud.com/2019-12-12-015958.png)
 
-完整代码见[Github]()
+完整代码见[Github@9cd87dd](https://github.com/bwangelme/RabbitMQDemo/tree/9cd87dd)
