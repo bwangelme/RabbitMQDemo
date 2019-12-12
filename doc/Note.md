@@ -53,3 +53,13 @@
 ![](https://passage-1253400711.cos-website.ap-beijing.myqcloud.com/2019-12-12-015958.png)
 
 完整代码见[Github@9cd87dd](https://github.com/bwangelme/RabbitMQDemo/tree/9cd87dd)
+
+## 提醒
+
+如果我们忘记了返回 ack，那么后果是很严重的，在消费者退出的时候，RabbitMQ 将会重发消息。同时 RabbitMQ 将会不断占用内存存储未被确认的消息，直到内存被吃光，RabbitMQ 将不会再发送任何消息。
+
+为了监控 RabbitMQ 中消息的情况，可以使用如下的命令:
+
+```sh
+sudo rabbitmqctl list_queues name messages_ready messages_unacknowledged
+```
