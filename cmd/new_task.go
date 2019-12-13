@@ -33,7 +33,7 @@ func main() {
 	// 声明 Queue 是非幂等的，即你只可以在它不存在的时候创建它
 	q, err := ch.QueueDeclare(
 		"hello", // Queue name
-		false,   // durable  持久性
+		true,   // durable  持久性
 		false,   // delete when unused
 		false,   // exclusive 独占
 		false,   // no-wait

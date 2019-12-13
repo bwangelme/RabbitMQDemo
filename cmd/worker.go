@@ -20,7 +20,7 @@ func main() {
 
 	// 因为在启动消费者的时候不确定 hello 队列是否已经存在了，所以我们在这里事先声明了一次
 	q, err := ch.QueueDeclare(
-		"hello",
+		"task_queue",
 		false,
 		false,
 		false,

@@ -64,6 +64,59 @@
 sudo rabbitmqctl list_queues name messages_ready messages_unacknowledged
 ```
 
+# 消息持久化
+
+在上面的例子中，我们已经了解到如何在消费者崩溃的情况下，让我们的消息不丢失。但如果 RabbitMQ 崩溃，或者 RabbitMQ 所在的节点宕机的话，消息仍然可能会丢失。
+
+在这种情况下，我们可以使用消息和队列持久化，这样消息即使 RabbitMQ 退出，消息和队列也回被持久化到磁盘中，不会丢失。
+
+## 声明队列持久化
+
+声明队列持久化的代码如下:
+
+```go
+	q, err := ch.QueueDeclare(
+		"task_queue", // Queue name
+		true,   // durable  持久性
+		false,   // delete when unused
+		false,   // exclusive 独占
+		false,   // no-wait
+		nil,     // arguments
+	)
+```
+
+__注意:__ 在声明队列时，如果我们声明一个已经存在的队列，但是初始化参数不同的时候，`QueueDeclare`会失败并返回一个 err，因此这里我们可以给queue起另外一个名字`task_queue`
+
+__注意:__ 生产者和消费者在声明队列时，传递的参数应该是相同的。
+
+
+## 声明消息持久化
+
+在发送消息的时候，我们可以设置一个 `amqp.Persistent` 选项，来表明这个消息应该被持久化。
+
+```go
+	err = ch.Publish(
+		"",     //exchange
+		q.Name, // routing key
+		false,  // mandatory 强制的
+		false,  // immediate 即时的
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent, // 声明消息持久化
+			ContentType: "text/plain",
+			Body:        []byte(body),
+		},
+	)
+```
+
+## 关于消息持久化注意事项
+
+上述声明消息持久化的代码，并不能完全保证消息不会丢失，有以下两方面的原因:
+
+1. 在 RabbitMQ 收到消息和 RabbitMQ 将消息写入磁盘这两个事件中仍然有一个短暂的时间窗口。
+2. RabbitMQ 并不会每次收到消息后，都调用 `fsync(2)`，消息可能被存储在缓存中，过一段时间后才被写入到磁盘中。
+
+因此，这个持久化并不是强健的，但是对于我们这个 demo 已经够用了，如果你想使用更强健的持久化策略，可以考虑使用 [Publisher Confirms](https://www.rabbitmq.com/confirms.html)。
+
 # 公平分发
 
 如果按照轮询分发的策略，那么可能会出现一个 Worker 特别忙，但是另外一个 Worker 很闲的情况。
@@ -93,6 +146,8 @@ __[上图代码见 Github@14a0414 ](https://github.com/bwangelme/RabbitMQDemo/tr
 
 ![](https://passage-1253400711.cos-website.ap-beijing.myqcloud.com/2019-12-13-142622.png)
 
-__[代码见 Github@]()__
+__[代码见 Github@ad5507e](https://github.com/bwangelme/RabbitMQDemo/tree/ad5507e)__
 
 可以看到2号窗口和3号窗口中的 Worker 都分配到了耗时较长的任务。
+
+__注意事项:__ 这样操作容易让 RabbitMQ 消息被塞满，需要有合适的监控机制来监控消息的数量。
