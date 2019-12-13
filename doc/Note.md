@@ -54,12 +54,45 @@
 
 完整代码见[Github@9cd87dd](https://github.com/bwangelme/RabbitMQDemo/tree/9cd87dd)
 
-## 提醒
+## 注意事项
 
-如果我们忘记了返回 ack，那么后果是很严重的，在消费者退出的时候，RabbitMQ 将会重发消息。同时 RabbitMQ 将会不断占用内存存储未被确认的消息，直到内存被吃光，RabbitMQ 将不会再发送任何消息。
+如果我们忘记了返回 ack，那么后果是很严重的，在消费者退出的时候，RabbitMQ 将会重发消息。在消费者未退出之前， RabbitMQ 将会不断占用内存存储未被确认的消息，直到内存被吃光，然后 RabbitMQ 将不会再发送任何消息了。
 
 为了监控 RabbitMQ 中消息的情况，可以使用如下的命令:
 
 ```sh
 sudo rabbitmqctl list_queues name messages_ready messages_unacknowledged
 ```
+
+# 公平分发
+
+如果按照轮询分发的策略，那么可能会出现一个 Worker 特别忙，但是另外一个 Worker 很闲的情况。
+
+例如有两个 Worker，我们分发的消息中，奇数的都是轻松的，偶数的都是困难的，那样就造成第一个 Worker 很轻松，但是第二个 Worker 特别繁忙。
+
+![](https://passage-1253400711.cos-website.ap-beijing.myqcloud.com/2019-12-13-141545.png)
+
+__[上图代码见 Github@14a0414 ](https://github.com/bwangelme/RabbitMQDemo/tree/14a0414)__
+
+在上面的例子中我们可以看到，2号窗口中的 Worker 接收到的都是繁忙任务，3号窗口中接收到的都是轻松任务。
+
+为了避免这种极端情况的发生，我们可以设置预取值(`prefetch count`)为1。这样的话，相当于告诉 RabbitMQ，在 Worker 消费完一个消息之前，不要再给他分发新的消息了，这样的话随后的消息就会被分发给其他的空闲的 Worker 了。
+
+在具体代码如下:
+
+```go
+// 在 Worker 的代码中设置
+	err = ch.Qos(
+		1,     // prefetch count
+		0,     // prefetch size
+		false, // global
+	)
+```
+
+运行效果如下:
+
+![](https://passage-1253400711.cos-website.ap-beijing.myqcloud.com/2019-12-13-142622.png)
+
+__[代码见 Github@]()__
+
+可以看到2号窗口和3号窗口中的 Worker 都分配到了耗时较长的任务。

@@ -31,15 +31,23 @@ func main() {
 
 	forever := make(chan bool)
 
+	err = ch.Qos(
+		1,     // prefetch count
+		0,     // prefetch size
+		false, // global
+	)
+	utils.FailOnError(err, "Set Qos")
+
 	msgs, err := ch.Consume(
 		q.Name, // name
 		"",     // consumer
-		false,   // auto ack
+		false,  // auto ack
 		false,  // exclusive
 		false,  // no-local
 		false,  // no-wait
 		nil,    // args
 	)
+	utils.FailOnError(err, "Comsume")
 
 	go func() {
 		for d := range msgs {
