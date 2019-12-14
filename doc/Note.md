@@ -1,6 +1,6 @@
 # 轮询分发
 
-默认情况下, RabbitMQ 将会顺序地给每个消费者发送消息。平均下来，每个消费者获得的消息数量是相同的。
+默认情况下, RabbitMQ 将会顺序地给绑定同一个队列的每个消费者发送消息。平均下来，每个消费者获得的消息数量是相同的。
 这种方式就叫做轮询(round-robin)，可以参考下面这个例子。
 
 ![round-robin Example](https://passage-1253400711.cos-website.ap-beijing.myqcloud.com/2019-12-12-014029.png)
@@ -64,9 +64,9 @@
 sudo rabbitmqctl list_queues name messages_ready messages_unacknowledged
 ```
 
-# 消息持久化
+# 持久化
 
-在上面的例子中，我们已经了解到如何在消费者崩溃的情况下，让我们的消息不丢失。但如果 RabbitMQ 崩溃，或者 RabbitMQ 所在的节点宕机的话，消息仍然可能会丢失。
+通过消息确认，我们可以在消费者崩溃的情况下，让我们的消息不丢失。但如果 RabbitMQ 崩溃，或者 RabbitMQ 所在的节点宕机的话，消息仍然可能会丢失。
 
 在这种情况下，我们可以使用消息和队列持久化，这样消息即使 RabbitMQ 退出，消息和队列也回被持久化到磁盘中，不会丢失。
 
@@ -151,3 +151,93 @@ __[代码见 Github@ad5507e](https://github.com/bwangelme/RabbitMQDemo/tree/ad55
 可以看到2号窗口和3号窗口中的 Worker 都分配到了耗时较长的任务。
 
 __注意事项:__ 这样操作容易让 RabbitMQ 消息被塞满，需要有合适的监控机制来监控消息的数量。
+
+# Exchange
+
+在 RabbitMQ 中，生产者不会将消息直接发到队列中，而是发送到 exchange 上。
+
+Exchange 一端接收消息，另外一端发送消息到队列中，Exchange 处理消息的方式是由它的类型决定的，Exchange 共有这么几种类型:
+`direct`, `topic`, `headers`, `fanout`。
+
+## 查看 Exchange
+
+通过命令 `rabbitmqctl list_exchanges` 就可以列出所有的 Exchange:
+
+```sh
+>>> rabbitmqctl list_exchanges
+Listing exchanges for vhost / ...
+name    type
+amq.fanout      fanout
+amq.headers     headers
+amq.match       headers
+amq.direct      direct
+amq.topic       topic
+        direct
+amq.rabbitmq.log        topic
+amq.rabbitmq.trace      topic
+```
+
+我们可以看到 RabbitMQ 中已经预置了 `amq.*` Exchange 和一个没有名字的 Exchange。无名 Exchange 是默认的，所有未指定 Exchange 的消息都会发到这里来。
+
+## Direct Exchange
+
+当我们像下面这样，发送消息时没有指定 Exchange 时，消息会发到默认的无名 Exchange 上。无名 Exchange 是`direct`类型，它将会根据 `routing key` 参数将消息转发到对应的同名队列上。
+
+```go
+	err = ch.Publish(
+		"",     //exchange
+		q.Name, // routing key，这里指定的是队列的名称。
+		false,  // mandatory 强制的
+		false,  // immediate 即时的
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "text/plain",
+			Body:         []byte(body),
+		},
+	)
+```
+
+## Fanout Exchange
+
+Fanout 类型的 Exchange 策略非常简单，它就是将收到的消息发送给所有绑定的队列，这点从它的名字就可以看出。
+
+### Example
+
+
+
+# 队列
+
+## 临时队列
+
+当我们需要创建一个只用一次的队列时，可以通过指定 `exclusive` 参数来实现:
+
+```go
+q, err := ch.QueueDeclare(
+  "",    // name
+  false, // durable
+  false, // delete when unused
+  true,  // exclusive
+  false, // no-wait
+  nil,   // arguments
+)
+```
+
+上面的代码创建了一个临时队列，在 channel 关闭之后，该队列就会被自动删除，注意我们设置了三个参数，`name`, `durable`, `exclusive`。
+
+上述代码返回的队列中，队列的名字类似于这样: `amq.gen-JzTY20BRgKO-HjmUJj0wLg`
+
+# Binding
+
+当队列创建好了以后，我们需要通过 binding 将队列和 Exchange 连接起来，具体使用的代码如下:
+
+```go
+err = ch.QueueBind(
+  q.Name, // queue name
+  "",     // routing key
+  "logs", // exchange
+  false,
+  nil,
+)
+```
+
+通过 `rabbitmqctl list_bindgs` 命令我们可以查看 RabbitMQ 中所有的 binding。

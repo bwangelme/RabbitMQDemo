@@ -11,7 +11,7 @@ import (
 
 func bodyForm(args []string) string {
 	var s string
-	if (len(args) < 2) || os.Args[1]== "" {
+	if (len(args) < 2) || os.Args[1] == "" {
 		s = "hello"
 	} else {
 		s = strings.Join(args[1:], " ")
@@ -30,25 +30,24 @@ func main() {
 	utils.FailOnError(err, "Channel")
 	defer ch.Close()
 
-	// 声明 Queue 是非幂等的，即你只可以在它不存在的时候创建它
-	q, err := ch.QueueDeclare(
-		"task_queue", // Queue name
-		true,   // durable  持久性
-		false,   // delete when unused
-		false,   // exclusive 独占
-		false,   // no-wait
-		nil,     // arguments
+	// 声明 Exchange
+	err = ch.ExchangeDeclare(
+		"logs",   // name
+		"fanout", // type
+		true,     // durable
+		false,    // auto-deleted
+		false,    // internal
+		false,    // no-wait
+		nil,      // arguments
 	)
-	utils.FailOnError(err, "Queue Declare")
 
 	body := bodyForm(os.Args)
 	err = ch.Publish(
-		"",     //exchange
-		q.Name, // routing key
+		"logs", // exchange
+		"",     // routing key
 		false,  // mandatory 强制的
 		false,  // immediate 即时的
 		amqp.Publishing{
-			DeliveryMode: amqp.Persistent,
 			ContentType: "text/plain",
 			Body:        []byte(body),
 		},

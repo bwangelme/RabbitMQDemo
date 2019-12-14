@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"log"
-	"time"
 
 	"github.com/bwangelme/RabbitMQDemo/utils"
 	"github.com/streadway/amqp"
@@ -18,30 +16,41 @@ func main() {
 	utils.FailOnError(err, "Channel")
 	defer ch.Close()
 
-	// 因为在启动消费者的时候不确定 hello 队列是否已经存在了，所以我们在这里事先声明了一次
+	err = ch.ExchangeDeclare(
+		"logs",   // name
+		"fanout", // type
+		true,     // durable
+		false,    // auto-deleted
+		false,    // internal
+		false,    // no-wait
+		nil,      // args
+	)
+	utils.FailOnError(err, "ExchangeDeclare")
+
 	q, err := ch.QueueDeclare(
-		"task_queue",
-		true,
-		false,
-		false,
-		false,
-		nil,
+		"",    // name
+		false, // durable
+		false, // delete when unused
+		true,  // exclusive
+		false, // no-wait
+		nil,   // args
 	)
 	utils.FailOnError(err, "Queue Declare")
 
-	forever := make(chan bool)
-
-	err = ch.Qos(
-		1,     // prefetch count
-		0,     // prefetch size
-		false, // global
+	err = ch.QueueBind(
+		q.Name, // queue name
+		"",     // routing key
+		"logs", // exchange name
+		false,  // no-wait
+		nil,    // args
 	)
-	utils.FailOnError(err, "Set Qos")
+
+	forever := make(chan bool)
 
 	msgs, err := ch.Consume(
 		q.Name, // name
 		"",     // consumer
-		false,  // auto ack
+		true,   // auto ack
 		false,  // exclusive
 		false,  // no-local
 		false,  // no-wait
@@ -51,12 +60,7 @@ func main() {
 
 	go func() {
 		for d := range msgs {
-			log.Printf("Received a message: %s", d.Body)
-			dot_count := bytes.Count(d.Body, []byte("."))
-			t := time.Duration(dot_count)
-			time.Sleep(t * time.Second)
-			log.Printf("Done")
-			d.Ack(false)
+			log.Printf("[x] %s", d.Body)
 		}
 	}()
 
