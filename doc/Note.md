@@ -203,7 +203,35 @@ Fanout 类型的 Exchange 策略非常简单，它就是将收到的消息发送
 
 ### Example
 
+示例如下:
 
+![](https://passage-1253400711.cos-website.ap-beijing.myqcloud.com/2019-12-14-051451.png)
+
+__代码见 [Github@cf8f902](https://github.com/bwangelme/RabbitMQDemo/tree/cf8f902)__
+
+我们可以看到二号窗口和三号窗口中的消费者都收到了生成者发送的消息。
+
+同时我们也可以通过命令查看我们创建的队列，Exchange 和 Binding。
+
+```sh
+>>> rabbitmqctl list_bindings
+Listing bindings for vhost /...
+source_name     source_kind     destination_name        destination_kind        routing_key     arguments
+logs    exchange        amq.gen-Q0YVQhBf8hBKPnU5uH4mOA  queue           []
+logs    exchange        amq.gen-jKZ7HxokfjOGh-NHVeB8Ew  queue           []
+...
+>>> rabbitmqctl list_exchanges
+Listing exchanges for vhost / ...
+name    type
+logs    fanout
+...
+>>> rabbitmqctl list_queues
+Timeout: 60.0 seconds ...
+Listing queues for vhost / ...
+amq.gen-jKZ7HxokfjOGh-NHVeB8Ew  0
+amq.gen-Q0YVQhBf8hBKPnU5uH4mOA  0
+...
+```
 
 # 队列
 
@@ -224,7 +252,7 @@ q, err := ch.QueueDeclare(
 
 上面的代码创建了一个临时队列，在 channel 关闭之后，该队列就会被自动删除，注意我们设置了三个参数，`name`, `durable`, `exclusive`。
 
-上述代码返回的队列中，队列的名字类似于这样: `amq.gen-JzTY20BRgKO-HjmUJj0wLg`
+上述代码返回的队列中，队列的名字类似于这样: `amq.gen-JzTY20BRgKO-HjmUJj0wLg`。想要了解 Exclusive Queue 的更多信息，请参考文档 [Guide on Queues](https://www.rabbitmq.com/queues.html)
 
 # Binding
 
