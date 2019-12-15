@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"os"
+	"strings"
 
 	"github.com/bwangelme/RabbitMQDemo/utils"
 	"github.com/streadway/amqp"
@@ -16,17 +18,6 @@ func main() {
 	utils.FailOnError(err, "Channel")
 	defer ch.Close()
 
-	err = ch.ExchangeDeclare(
-		"logs",   // name
-		"fanout", // type
-		true,     // durable
-		false,    // auto-deleted
-		false,    // internal
-		false,    // no-wait
-		nil,      // args
-	)
-	utils.FailOnError(err, "ExchangeDeclare")
-
 	q, err := ch.QueueDeclare(
 		"",    // name
 		false, // durable
@@ -37,13 +28,37 @@ func main() {
 	)
 	utils.FailOnError(err, "Queue Declare")
 
-	err = ch.QueueBind(
-		q.Name, // queue name
-		"",     // routing key
-		"logs", // exchange name
-		false,  // no-wait
-		nil,    // args
-	)
+	if len(os.Args) < 2 {
+		log.Println("Usage: log_consumer [debug] [info] [warning] [error] [fatal]")
+		os.Exit(0)
+	}
+
+	validLevels := []string{}
+	for _, s := range os.Args[1:] {
+		levels := "debug,info,warning,error,fatal"
+		idx := strings.Index(levels, s)
+		if idx == -1 {
+			log.Printf("Invalid Level %s\n", s)
+			continue
+		}
+		validLevels = append(validLevels, s)
+	}
+
+	if len(validLevels) == 0 {
+		os.Exit(1)
+	}
+
+	for _, level := range validLevels {
+		err = ch.QueueBind(
+			q.Name,        // queue name
+			level,         // routing key
+			"logs_direct", // exchange name
+			false,         // no-wait
+			nil,           // args
+		)
+		utils.FailOnError(err, "Queue Bind")
+		log.Printf("Bind to the %s\n", level)
+	}
 
 	forever := make(chan bool)
 
@@ -56,11 +71,11 @@ func main() {
 		false,  // no-wait
 		nil,    // args
 	)
-	utils.FailOnError(err, "Comsume")
+	utils.FailOnError(err, "Consume")
 
 	go func() {
 		for d := range msgs {
-			log.Printf("[x] %s", d.Body)
+			log.Printf("[x] %s:%s", d.RoutingKey, d.Body)
 		}
 	}()
 

@@ -269,3 +269,7 @@ err = ch.QueueBind(
 ```
 
 通过 `rabbitmqctl list_bindgs` 命令我们可以查看 RabbitMQ 中所有的 binding。
+
+# 第四节 Routing
+
+

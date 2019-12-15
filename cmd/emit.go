@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -9,15 +10,75 @@ import (
 	"github.com/streadway/amqp"
 )
 
-func bodyForm(args []string) string {
-	var s string
-	if (len(args) < 2) || os.Args[1] == "" {
-		s = "hello"
+type LogLevel int
+
+const (
+	DEBUG LogLevel = iota
+	INFO
+	WARNING
+	ERROR
+	FATAL
+)
+
+func NewLevel(level string) LogLevel {
+	level = strings.ToUpper(level)
+
+	if level == "DEBUG" {
+		return DEBUG
+	} else if level == "INFO" {
+		return INFO
+	} else if level == "WARNING" {
+		return WARNING
+	} else if level == "ERROR" {
+		return ERROR
+	} else if level == "FATAL" {
+		return FATAL
 	} else {
-		s = strings.Join(args[1:], " ")
+		return INFO
+	}
+}
+
+func (l LogLevel) String() string {
+	nameMap := map[LogLevel]string{
+		DEBUG:   "DEBUG",
+		INFO:    "INFO",
+		WARNING: "WARNING",
+		ERROR:   "ERROR",
+		FATAL:   "FATAL",
+	}
+	name, ok := nameMap[l]
+	if !ok {
+		return ""
+	} else {
+		return name
+	}
+}
+
+type Log struct {
+	msg   string
+	level LogLevel
+}
+
+func (l Log) String() string {
+	return fmt.Sprintf("%s: %s", l.level, l.msg)
+}
+
+func ParseArgs(args []string) Log {
+	var msg string
+	var level LogLevel = INFO
+	if (len(args) < 2) || os.Args[1] == "" {
+		msg = "hello"
+	} else if len(args) == 2 {
+		msg = args[1]
+	} else if len(args) >= 3 {
+		level = NewLevel(args[1])
+		msg = strings.Join(args[2:], " ")
 	}
 
-	return s
+	return Log{
+		msg:   msg,
+		level: level,
+	}
 }
 
 func main() {
@@ -32,26 +93,27 @@ func main() {
 
 	// 声明 Exchange
 	err = ch.ExchangeDeclare(
-		"logs",   // name
-		"fanout", // type
-		true,     // durable
-		false,    // auto-deleted
-		false,    // internal
-		false,    // no-wait
-		nil,      // arguments
+		"logs_direct", // name
+		"direct",      // type
+		true,          // durable
+		false,         // auto-deleted
+		false,         // internal
+		false,         // no-wait
+		nil,           // arguments
 	)
 
-	body := bodyForm(os.Args)
+	logRecord := ParseArgs(os.Args)
+	strLevel := strings.ToLower(fmt.Sprint(logRecord.level))
 	err = ch.Publish(
-		"logs", // exchange
-		"",     // routing key
-		false,  // mandatory 强制的
-		false,  // immediate 即时的
+		"logs_direct", // exchange
+		strLevel,      // routing key
+		false,         // mandatory 强制的
+		false,         // immediate 即时的
 		amqp.Publishing{
 			ContentType: "text/plain",
-			Body:        []byte(body),
+			Body:        []byte(logRecord.msg),
 		},
 	)
-	log.Printf("[x] sent %s", body)
+	log.Printf("[x] sent %s", logRecord)
 	utils.FailOnError(err, "Publish")
 }
