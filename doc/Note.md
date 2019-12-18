@@ -253,9 +253,12 @@ __代码见 [Github@cf8f902](https://github.com/bwangelme/RabbitMQDemo/tree/cf8f
 
 ## Topic Exchange
 
-下面是一个 Topic Exchange 的例子，代码见 ``
+下面是一个 Topic Exchange 的例子，代码见 [Github@b56c3b1](https://github.com/bwangelme/RabbitMQDemo/tree/b56c3b1)
 
-![](https://passage-1253400711.cos-website.ap-beijing.myqcloud.com/2019-12-18-142048.png)
+![](https://passage-1253400711.cos-website.ap-beijing.myqcloud.com/2019-12-18-142810.png)
+
+注意红框处的消息，2号窗口中的消费者订阅了 `*.info` 和 `net.*` 两个模式，当1号窗口的生产者发送了 `net.info` 模式的消息时，2号窗口的消费者只收到了一条。
+
 
 ```sh
 >>> rabbitmqctl list_bindings
