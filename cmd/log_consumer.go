@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"os"
-	"strings"
 
 	"github.com/bwangelme/RabbitMQDemo/utils"
 	"github.com/streadway/amqp"
@@ -29,35 +28,20 @@ func main() {
 	utils.FailOnError(err, "Queue Declare")
 
 	if len(os.Args) < 2 {
-		log.Println("Usage: log_consumer [debug] [info] [warning] [error] [fatal]")
+		log.Println("Usage: log_consumer `bind key`")
 		os.Exit(0)
 	}
 
-	validLevels := []string{}
-	for _, s := range os.Args[1:] {
-		levels := "debug,info,warning,error,fatal"
-		idx := strings.Index(levels, s)
-		if idx == -1 {
-			log.Printf("Invalid Level %s\n", s)
-			continue
-		}
-		validLevels = append(validLevels, s)
-	}
-
-	if len(validLevels) == 0 {
-		os.Exit(1)
-	}
-
-	for _, level := range validLevels {
+	for _, bindKey := range os.Args[1:] {
 		err = ch.QueueBind(
-			q.Name,        // queue name
-			level,         // routing key
-			"logs_direct", // exchange name
-			false,         // no-wait
-			nil,           // args
+			q.Name,       // queue name
+			bindKey,      // routing key
+			"logs_topic", // exchange name
+			false,        // no-wait
+			nil,          // args
 		)
 		utils.FailOnError(err, "Queue Bind")
-		log.Printf("Bind to the %s\n", level)
+		log.Printf("Bind to the %s\n", bindKey)
 	}
 
 	forever := make(chan bool)

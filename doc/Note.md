@@ -181,7 +181,9 @@ amq.rabbitmq.trace      topic
 
 ## Direct Exchange
 
-当我们像下面这样，发送消息时没有指定 Exchange 时，消息会发到默认的无名 Exchange 上。无名 Exchange 是`direct`类型，它将会根据 `routing key` 参数将消息转发到对应的同名队列上。
+当我们像下面这样，发送消息时没有指定 Exchange 时，消息会发到默认的`""` Exchange 上。`""` Exchange 是`direct`类型，它将会根据 `routing key` 参数将消息转发到对应的同名队列上。
+
++ 生产者发送消息到 Direct Exchange
 
 ```go
 	err = ch.Publish(
@@ -196,6 +198,42 @@ amq.rabbitmq.trace      topic
 		},
 	)
 ```
+
+同样，消费者在声明队列的时候，如果手动给队列绑定 Exchange，那么队列会默认绑定到 `""` Exchange 上。这个队列对应的 `Bind key` 就是队列名称。
+
++ 消费者将 queue 绑定到 direct exchange，并消费消息的代码
+
+```go
+err = ch.QueueBind(
+    q.Name,        // queue name
+    "some routing",         // routing key
+    "", // exchange name
+    false,         // no-wait
+    nil,           // args
+)
+
+msgs, err := ch.Consume(
+    q.Name, // name
+    "",     // consumer
+    true,   // auto ack
+    false,  // exclusive
+    false,  // no-local
+    false,  // no-wait
+    nil,    // args
+)
+```
+
+我们将`Publish`时指定的`routing key`称为`Route Key`, 将消费者 Bind `direct` Exchange 时指定的`routing key`成为 `Bind key`。
+
+Direct Exchange 的转发逻辑很简单，就是寻找 `Bind key` == `Route key` 队列，然后将消息转发过去。它支持一个队列使用多个 `Bind Key`，也支持多个队列使用同一个 `Bind key`。
+
+### Example
+
+以下示例的代码可以在 [Github@3593d57](https://github.com/bwangelme/RabbitMQDemo/tree/3593d57) 上找到。
+
+在下面这个例子中，我们使用日志等级(warning|info|error等)作为`routing key`，对应等级的日志，就只会发到对应`Bind Key`的队列上。
+
+![](https://passage-1253400711.cos-website.ap-beijing.myqcloud.com/2019-12-18-134234.png)
 
 ## Fanout Exchange
 
@@ -212,6 +250,12 @@ __代码见 [Github@cf8f902](https://github.com/bwangelme/RabbitMQDemo/tree/cf8f
 我们可以看到二号窗口和三号窗口中的消费者都收到了生成者发送的消息。
 
 同时我们也可以通过命令查看我们创建的队列，Exchange 和 Binding。
+
+## Topic Exchange
+
+下面是一个 Topic Exchange 的例子，代码见 ``
+
+![](https://passage-1253400711.cos-website.ap-beijing.myqcloud.com/2019-12-18-142048.png)
 
 ```sh
 >>> rabbitmqctl list_bindings
@@ -269,7 +313,3 @@ err = ch.QueueBind(
 ```
 
 通过 `rabbitmqctl list_bindgs` 命令我们可以查看 RabbitMQ 中所有的 binding。
-
-# 第四节 Routing
-
-
