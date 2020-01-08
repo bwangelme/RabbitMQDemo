@@ -35,7 +35,6 @@
 		false,  // no-wait
 		nil,    // args
 	)
-
 	go func() {
 		for d := range msgs {
 			log.Printf("Received a message: %s", d.Body)
